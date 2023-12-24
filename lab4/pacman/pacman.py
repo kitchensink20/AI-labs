@@ -266,12 +266,10 @@ class ClassicGameRules:
 
   def win( self, state, game ):
     if not self.quiet: print(("Pacman emerges victorious! Score: %d" % state.data.score))
-    
     game.gameOver = True
 
   def lose( self, state, game ):
     if not self.quiet: print(("Pacman died! Score: %d" % state.data.score))
-    
     game.gameOver = True
 
   def getProgress(self, game):
@@ -609,15 +607,12 @@ def replayGame( layout, actions, display ):
 
 def runGames( layout, pacman, ghosts, display, numGames, record, numTraining = 0, catchExceptions=False, timeout=30 ):
   import __main__
-  import time
   __main__.__dict__['_display'] = display
 
   rules = ClassicGameRules(timeout)
   games = []
-  start_times = []
 
   for i in range( numGames ):
-    start_times.append(time.time())
     beQuiet = i < numTraining
     if beQuiet:
         # Suppress output and graphics
@@ -639,12 +634,7 @@ def runGames( layout, pacman, ghosts, display, numGames, record, numTraining = 0
       pickle.dump(components, f)
       f.close()
 
-  times = []
-  for st in start_times:
-    times.append(time.time() - st)
-
   if (numGames-numTraining) > 0:
-
     scores = [game.state.getScore() for game in games]
     wins = [game.state.isWin() for game in games]
     winRate = wins.count(True)/ float(len(wins))
@@ -652,8 +642,6 @@ def runGames( layout, pacman, ghosts, display, numGames, record, numTraining = 0
     print(('Scores:       ', ', '.join([str(score) for score in scores])))
     print(('Win Rate:      %d/%d (%.2f)' % (wins.count(True), len(wins), winRate)))
     print(('Record:       ', ', '.join([ ['Loss', 'Win'][int(w)] for w in wins])))
-    print(('Time   ', ', '.join([ str(t) for t in times])))
-    print('Average time:', sum(times) / float(len(times)))
 
   return games
 

@@ -168,7 +168,7 @@ class GameState:
     Returns a Grid of boolean wall indicator variables.
 
     Grids can be accessed via list notation, so to check
-    if there is a wall at (x,y), just call
+    if there is food at (x,y), just call
 
     walls = state.getWalls()
     if walls[x][y] == True: ...
@@ -196,7 +196,7 @@ class GameState:
     """
     Generates a new state by copying information from its predecessor.
     """
-    if prevState is not None: # Initial state
+    if prevState != None: # Initial state
       self.data = GameStateData(prevState.data)
     else:
       self.data = GameStateData()
@@ -266,12 +266,10 @@ class ClassicGameRules:
 
   def win( self, state, game ):
     if not self.quiet: print(("Pacman emerges victorious! Score: %d" % state.data.score))
-    
     game.gameOver = True
 
   def lose( self, state, game ):
     if not self.quiet: print(("Pacman died! Score: %d" % state.data.score))
-    
     game.gameOver = True
 
   def getProgress(self, game):
@@ -309,10 +307,7 @@ class PacmanRules:
     """
     Returns a list of possible actions.
     """
-    possibleActions = Actions.getPossibleActions( state.getPacmanState().configuration, state.data.layout.walls )
-    if Directions.STOP in possibleActions:
-      possibleActions.remove( Directions.STOP )
-    return possibleActions
+    return Actions.getPossibleActions( state.getPacmanState().configuration, state.data.layout.walls )
   getLegalActions = staticmethod( getLegalActions )
 
   def applyAction( state, action ):
@@ -479,6 +474,8 @@ def readCommand( argv ):
                     metavar='TYPE', default='KeyboardAgent')
   parser.add_option('-t', '--textGraphics', action='store_true', dest='textGraphics',
                     help='Display output as text only', default=False)
+  parser.add_option('-m', '--terminalGraphics', action='store_true', dest='terminalGraphics',
+                    help='Display output as terminalGraphics', default=False)
   parser.add_option('-q', '--quietTextGraphics', action='store_true', dest='quietGraphics',
                     help='Generate minimal output and no graphics', default=False)
   parser.add_option('-g', '--ghosts', dest='ghost',
@@ -524,6 +521,9 @@ def readCommand( argv ):
   if options.numTraining > 0:
     args['numTraining'] = options.numTraining
     if 'numTraining' not in agentOpts: agentOpts['numTraining'] = options.numTraining
+  if options.terminalGraphics and options.pacman == 'KeyboardAgent':
+      import keyboardAgents
+      keyboardAgents.USE_CURSE = True
   pacman = pacmanType(**agentOpts) # Instantiate Pacman with agentArgs
   args['pacman'] = pacman
 
@@ -544,6 +544,10 @@ def readCommand( argv ):
     import textDisplay
     textDisplay.SLEEP_TIME = options.frameTime
     args['display'] = textDisplay.PacmanGraphics()
+  elif options.terminalGraphics:
+    import textDisplay
+    textDisplay.SLEEP_TIME = options.frameTime
+    args['display'] = textDisplay.CurseDisplay()
   else:
     import graphicsDisplay
     args['display'] = graphicsDisplay.PacmanGraphics(options.zoom, frameTime = options.frameTime)
@@ -609,15 +613,12 @@ def replayGame( layout, actions, display ):
 
 def runGames( layout, pacman, ghosts, display, numGames, record, numTraining = 0, catchExceptions=False, timeout=30 ):
   import __main__
-  import time
   __main__.__dict__['_display'] = display
 
   rules = ClassicGameRules(timeout)
   games = []
-  start_times = []
 
   for i in range( numGames ):
-    start_times.append(time.time())
     beQuiet = i < numTraining
     if beQuiet:
         # Suppress output and graphics
@@ -627,7 +628,7 @@ def runGames( layout, pacman, ghosts, display, numGames, record, numTraining = 0
     else:
         gameDisplay = display
         rules.quiet = False
-    game = rules.newGame(layout, pacman, ghosts, gameDisplay, beQuiet, catchExceptions)
+    game = rules.newGame( layout, pacman, ghosts, gameDisplay, beQuiet, catchExceptions)
     game.run()
     if not beQuiet: games.append(game)
 
@@ -639,12 +640,7 @@ def runGames( layout, pacman, ghosts, display, numGames, record, numTraining = 0
       pickle.dump(components, f)
       f.close()
 
-  times = []
-  for st in start_times:
-    times.append(time.time() - st)
-
   if (numGames-numTraining) > 0:
-
     scores = [game.state.getScore() for game in games]
     wins = [game.state.isWin() for game in games]
     winRate = wins.count(True)/ float(len(wins))
@@ -652,8 +648,6 @@ def runGames( layout, pacman, ghosts, display, numGames, record, numTraining = 0
     print(('Scores:       ', ', '.join([str(score) for score in scores])))
     print(('Win Rate:      %d/%d (%.2f)' % (wins.count(True), len(wins), winRate)))
     print(('Record:       ', ', '.join([ ['Loss', 'Win'][int(w)] for w in wins])))
-    print(('Time   ', ', '.join([ str(t) for t in times])))
-    print('Average time:', sum(times) / float(len(times)))
 
   return games
 
